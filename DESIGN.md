@@ -5,8 +5,7 @@ to learn where your project is headed. Replace each _italic prompt_.
 
 ## Target
 
-_One or two sentences: what is this creature, what does it eat, where does it live,
-and what should playing feel like?_
+_A sashimi snake that travels along a wooden board. It eats sushi ingredients to grow. Our grid is 48x28_
 
 ## Menu choices
 

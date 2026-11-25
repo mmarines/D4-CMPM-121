@@ -2,7 +2,7 @@
 ## It never decides rules: those live in core/session.gd.
 extends Node3D
 
-const GRID := Vector2i(48, 48)  # your call: bigger grids make the dragon feel finer
+const GRID := Vector2i(48, 28)  # your call: bigger grids make the dragon feel finer
 const TICK_SECONDS := 0.1
 const CAMERA_OFFSET := Vector3(0, 11, 7.5)  # above and behind the head
 const DIRECTIONS := {
