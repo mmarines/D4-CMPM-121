@@ -18,18 +18,8 @@ Conventions the game relies on (Blender coordinates, Z up):
     body at the back and front, the turn joins the back and the right side.
   - Floors lie with their top at z = 0; everything else stands on z = 0.
 
-Editing by hand in Blender instead:
-  The game loads only art/dragon_kit.glb, never the .blend. After editing a .blend in
-  Blender, export it yourself with File > Export > glTF 2.0 (.glb/.gltf):
-    Format: glTF Binary (.glb)        File: art/dragon_kit.glb
-    Include: no Limit to boxes ticked; Cameras and Punctual Lights unticked
-    Transform: +Y Up ticked           Mesh: Apply Modifiers ticked
-  and keep the object names (head, straight, turn, tail, floor, wall, ...).
-  WARNING: deno task art rewrites BOTH art/dragon_kit.blend and art/dragon_kit.glb,
-  erasing hand edits. Before editing, File > Save As a copy such as art/my_kit.blend
-  (deno task blender art/my_kit.blend reopens it). The tradeoff: from then on the
-  kit lives in that file, not in this script, so a change here no longer reaches it
-  unless you redo it by hand, and a .blend is hard to review in a diff.
+All models are generated here. Run deno task art to rebuild both files.
+The food mesh is exported separately from the body and tile registries.
 """
 
 from pathlib import Path
@@ -89,13 +79,15 @@ def srgb(hex_code):
 def make_materials():
     """One material per voxel character. Runs after reset_scene(), which would erase them."""
     PALETTE.update({
-        "#": pbr_material("Scales", "#2f9e5b", metallic=0.2, roughness=0.45),
-        "*": pbr_material("Gold", "#f2bf3a", metallic=1.0, roughness=0.3),
-        "e": pbr_material("Eye", "#ffb22e", emission="#ffa21a", strength=4.0),
-        "o": pbr_material("Ember", "#ff6a1a", emission="#ff4a08", strength=3.0),
-        "s": pbr_material("Stone", "#9e9883", roughness=0.85),
-        "t": pbr_material("Moss", "#6f8558", roughness=0.9),
-        "w": pbr_material("Brick", "#6b4d3d", roughness=0.9),
+        "r": pbr_material("Rice", "#f5f0e1", roughness=0.85),
+        "n": pbr_material("Nori", "#20382b", roughness=0.7),
+        "s": pbr_material("Salmon", "#fa8067", roughness=0.35),
+        "f": pbr_material("Salmon Stripe", "#ffd2b8", roughness=0.4),
+        "e": pbr_material("Eye", "#171717", roughness=0.3),
+        "w": pbr_material("Wood", "#c99a65", roughness=0.85),
+        "g": pbr_material("Wood Grain", "#b88755", roughness=0.85),
+        "b": pbr_material("Board Rim", "#795333", roughness=0.65),
+        "o": pbr_material("Ingredient", "#ff6949", roughness=0.35),
     })
 
 
@@ -123,73 +115,97 @@ def voxels(bm, layers, below_ground=0):
                     face.material_index = PALETTE[char]
 
 
+def box(bm, material, center, dimensions):
+    """A rectangular piece with explicit dimensions in grid-cell units."""
+    transform = Matrix.Translation(center) @ Matrix.Diagonal((*dimensions, 1.0))
+    cube = bmesh.ops.create_cube(bm, size=1.0, matrix=transform)
+    for face in {f for v in cube["verts"] for f in v.link_faces}:
+        face.material_index = PALETTE[material]
+
+
+def sushi_segment(bm, openings, head=False, tail=False):
+    """One nigiri per cell, with narrow nori links reaching the cell edges."""
+    # The central block ends at +/- 0.36; connectors meet it exactly.
+    box(bm, "r", (0, 0, 0.14), (0.72, 0.72, 0.28))
+    box(bm, "s", (0, 0, 0.36), (0.72, 0.72, 0.16))
+    # Salmon marbling, leaving the center clear for the nori belt.
+    for y in (-0.26, 0.26):
+        box(bm, "f", (0, y, 0.446), (0.64, 0.045, 0.012))
+    # A continuous nori belt across the top and down both sides of the nigiri.
+    # The three panels meet at their edges, with no buried overlapping volume.
+    box(bm, "n", (0, 0, 0.452), (0.76, 0.19, 0.024))
+    for x in (-0.37, 0.37):
+        box(bm, "n", (x, 0, 0.22), (0.02, 0.19, 0.44))
+    # A narrow seaweed link spans the gap between neighboring sushi blocks.
+    # Each half-link stops at the cell edge; adjacent links touch, not overlap.
+    for dx, dy in openings:
+        if dx:
+            # Split the link around the side belt so the central section meets it.
+            box(bm, "n", (dx * 0.44, 0, 0.11), (0.12, 0.19, 0.22))
+            for y in (-0.1225, 0.1225):
+                box(bm, "n", (dx * 0.43, y, 0.11), (0.14, 0.055, 0.22))
+        else:
+            box(bm, "n", (0, dy * 0.43, 0.11), (0.30, 0.14, 0.22))
+    if head:
+        # Eyes are placed on the front half of the topping for top-down visibility.
+        for x in (-0.23, 0.23):
+            box(bm, "e", (x, 0.25, 0.475), (0.13, 0.13, 0.07))
+    if tail:
+        # A small nori cap marks the trailing end without extending beyond the cell.
+        box(bm, "n", (0, -0.40, 0.11), (0.28, 0.08, 0.22))
+
+
 def build_head(bm):
-    voxels(bm, ["""
-        .##.
-        ####
-        ####
-        .##.
-        """, """
-        ....
-        e##e
-        .##.
-        .##.
-        """, """
-        ....
-        ....
-        *..*
-        ....
-        """])
+    sushi_segment(bm, [(0, -1)], head=True)
 
 
 def build_straight(bm):
-    voxels(bm, ["""
-        .##.
-        .##.
-        .##.
-        .##.
-        """, """
-        ....
-        .*..
-        ....
-        .*..
-        """])
+    sushi_segment(bm, [(0, -1), (0, 1)])
 
 
 def build_turn(bm):
-    voxels(bm, ["""
-        ....
-        .###
-        .###
-        .##.
-        """])
+    sushi_segment(bm, [(0, -1), (1, 0)])
 
 
 def build_tail(bm):
+    sushi_segment(bm, [(0, 1)], tail=True)
+
+
+def build_food(bm):
     voxels(bm, ["""
-        .##.
-        .##.
-        ..#.
-        ..o.
+        ....
+        .oo.
+        .oo.
+        ....
+        """, """
+        ....
+        .of.
+        .fo.
+        ....
         """])
 
 
 def build_floor(bm):
     voxels(bm, ["""
-        ssst
-        stss
-        ssss
-        tsss
+        wwww
+        gggg
+        wwww
+        wwww
         """], below_ground=1)
 
 
 def build_wall(bm):
     voxels(bm, ["""
+        bbbb
+        bbbb
+        bbbb
+        bbbb
+        """, """
+        wwww
+        gggg
         wwww
         wwww
-        wwww
-        wwww
-        """] * 3)
+        """])
 
 
 PIECES = {  # the dragon kit; the game finds each mesh by these names
@@ -240,6 +256,7 @@ def lay_out_kit(scene):
     for row, registry in enumerate([PIECES, TILES]):
         for column, (name, build) in enumerate(registry.items()):
             make_object(scene, name, build, location=(column * spacing, -row * spacing, 0))
+    make_object(scene, "food", build_food, location=(2 * spacing, -spacing, 0))
 
 
 # --- Export ---------------------------------------------------------------------
