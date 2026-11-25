@@ -1,12 +1,11 @@
-## The world around the dragon: sky, sun, and the board's tiles. Built once and never
-## changed during play, so each kind of tile is one MultiMesh (Flyweight made visible:
-## one mesh uploaded once, drawn at a thousand transforms in one call).
+## The cozy sushi-board world: sky, warm light, and wooden board tiles.
+## Built once and never changed during play.
 class_name Stage
 extends Node3D
 
-const SKY_TOP := Color("1b2f4a")
-const HORIZON := Color("e0936a")  # dusk; the fog uses it too, so the floor melts into the sky
-const EARTH := Color("3a2f2a")  # warm dark ground beyond the board
+const SKY_TOP := Color("79a4a2")
+const HORIZON := Color("f2cf9a")
+const EARTH := Color("6d4a32")
 
 var rng := RandomNumberGenerator.new()  # seeded, so the stage looks the same every load
 

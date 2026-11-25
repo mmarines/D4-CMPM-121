@@ -1,10 +1,10 @@
-## deno task kit: see the kit as the game will, under the game's own lighting.
-## A sample dragon shows how the pieces join through turns; in front of the board,
+## deno task kit: see the sushi kit as the game will, under the lighting.
+## A sample sushi snake shows how the pieces join through turns; in front of the board,
 ## every piece in the kit stands in a row with its name.
 extends Node3D
 
 const SIZE := Vector2i(12, 9)
-## A body, head first like Dragon.body, with turns both ways.
+## A body, head first like the Session's snake, with turns both ways.
 const SAMPLE: Array[Vector2i] = [
 	Vector2i(8, 2),
 	Vector2i(7, 2),
