@@ -9,6 +9,8 @@ var dragon: Dragon
 var food := Vector2i(-1, -1)
 var score := 0
 var rng := RandomNumberGenerator.new()
+var started := false
+var running := true
 
 
 func _init(grid_size: Vector2i) -> void:
@@ -22,7 +24,20 @@ func _init(grid_size: Vector2i) -> void:
 ## own body and with solid tiles (board.is_solid). Each needs the dragon and something
 ## else, which is why they go here rather than in Dragon.tick.
 func tick() -> void:
-	var eating := dragon.body[0] + dragon.heading == food
+	if not started or not running:
+		return
+
+	var candidate := dragon.next_head()
+	if board.is_solid(candidate):
+		running = false
+		return
+
+	var tail_is_leaving: bool = candidate == dragon.body.back()
+	if candidate in dragon.body and not tail_is_leaving:
+		running = false
+		return
+
+	var eating := candidate == food
 	dragon.tick(eating)
 	if eating:
 		score += 1
@@ -38,3 +53,20 @@ func spawn_food() -> void:
 		food = Vector2i(-1, -1)
 	else:
 		food = free_cells[rng.randi_range(0, free_cells.size() - 1)]
+
+
+func start(direction: Vector2i) -> void:
+	if running:
+		started = true
+		dragon.turn(direction)
+
+
+func restart() -> void:
+	var grid_size := board.size
+	board = Board.bordered(grid_size)
+	dragon = Dragon.new(grid_size)
+	score = 0
+	started = false
+	running = true
+	rng.seed = 12345
+	spawn_food()

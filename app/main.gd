@@ -18,6 +18,9 @@ var segments: Array[MeshInstance3D] = []
 var food := MeshInstance3D.new()
 var camera := Camera3D.new()
 var score_label := Label.new()
+var game_over_label := Label.new()
+var start_label := Label.new()
+var hud := CanvasLayer.new()
 var _clock := 0.0
 
 
@@ -26,22 +29,57 @@ func _ready() -> void:
 	_build_stage()
 	_draw_snake()
 	_draw_food()
-	var hud := CanvasLayer.new()
 	add_child(hud)
 	score_label.text = "Score: 0"
 	score_label.position = Vector2(16, 12)
-	score_label.add_theme_font_size_override("font_size", 18)
+	score_label.add_theme_font_size_override("font_size", 24)
 	score_label.add_theme_color_override("font_color", Color("fff8e7"))
 	score_label.add_theme_color_override("font_outline_color", Color("4a2e22"))
 	score_label.add_theme_constant_override("outline_size", 3)
 	hud.add_child(score_label)
 
+	game_over_label.text = "Sushi Smashed!\nFinal score: 0\nPress Enter to play again"
+	game_over_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	game_over_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	game_over_label.position = Vector2(0, 0)
+	game_over_label.size = get_viewport().get_visible_rect().size
+	game_over_label.visible = false
+	game_over_label.add_theme_font_size_override("font_size", 42)
+	game_over_label.add_theme_color_override("font_color", Color("fff8e7"))
+	game_over_label.add_theme_color_override("font_outline_color", Color("4a2e22"))
+	game_over_label.add_theme_constant_override("outline_size", 5)
+	hud.add_child(game_over_label)
+
+	start_label.text = "Press an arrow key to start!"
+	start_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	start_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	start_label.position = Vector2(0, 0)
+	start_label.size = get_viewport().get_visible_rect().size
+	start_label.add_theme_font_size_override("font_size", 42)
+	start_label.add_theme_color_override("font_color", Color("fff8e7"))
+	start_label.add_theme_color_override("font_outline_color", Color("4a2e22"))
+	start_label.add_theme_constant_override("outline_size", 5)
+	hud.add_child(start_label)
+
 
 ## Input arrives as events, so even a tap shorter than one frame is never missed.
 func _unhandled_input(event: InputEvent) -> void:
+	if not session.running:
+		if event.is_action_pressed("ui_accept"):
+			session.restart()
+			_clock = 0.0
+			game_over_label.visible = false
+			start_label.visible = false
+			_draw_snake()
+			_draw_food()
+			score_label.text = "Score: 0"
+			start_label.visible = true
+		return
+
 	for action in DIRECTIONS:
 		if event.is_action_pressed(action):
-			session.dragon.turn(DIRECTIONS[action])
+			session.start(DIRECTIONS[action])
+			start_label.visible = false
 
 
 func _process(delta: float) -> void:
@@ -52,6 +90,11 @@ func _process(delta: float) -> void:
 		_draw_snake()
 		_draw_food()
 		score_label.text = "Score: %d" % session.score
+		if not session.running:
+			game_over_label.text = (
+				"Sushi Smashed!\nFinal score: %d\nPress Enter to play again" % session.score
+			)
+			game_over_label.visible = true
 	_follow(delta)
 
 
